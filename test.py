@@ -78,7 +78,7 @@ print(AESencryptedText)
 #now alice encrypts the key for bob
 encAESkey = alice.encKey(f.AESkey, bob.publickey)
 print("Key from Alice encrypted for Bob: ")
-print(AESencryptedText)
+print(encAESkey)
 
 #bob decrypts the key 
 decAESkey = bob.decKey(encAESkey)
