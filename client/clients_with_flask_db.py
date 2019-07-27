@@ -9,7 +9,6 @@ import json
 import requests
 import random
 import string
-import base64
 from Cryptodome.Cipher import AES, PKCS1_OAEP
 from Cryptodome import Random
 from Cryptodome.PublicKey import RSA

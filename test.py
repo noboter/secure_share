@@ -4,7 +4,8 @@ Created on Fri Jul 26 18:45:29 2019
 
 @author: norbert
 """
-
+import string
+import random
 from Cryptodome.Cipher import AES, PKCS1_OAEP
 from Cryptodome import Random
 from Cryptodome.PublicKey import RSA
@@ -17,14 +18,16 @@ class client:
     
     privatekey = ""
     publickey = ""
+    name = ""
     
-    def __init__(self):
-        print("client generating RSA Key");
+    def __init__(self, name):
+        self.name = name
+        print("[*] client generating RSA Key for " + name);
         #generate client rsa public/private key
         privkey = RSA.generate(2048)
         self.privatekey = privkey.export_key()#4096)
         #encrypted_key = key.export_key(passphrase=secret_code, pkcs=8, protection="scryptAndAES128-CBC")
-        self.publickey = privkey.export_key();
+        self.publickey = private_key.publickey().export_key()
         
     def encKey(self, AESKey, receipientPublicKey):
         recipient_key = RSA.import_key(receipientPublicKey)
@@ -64,10 +67,8 @@ text = "create two users, a file with this data and encrypt the AESkey \
         with RSA from first user for the second"
 
 #two clients:
-print("Alice")
-alice = client()
-print("Bob")
-bob = client()
+alice = client("Alice")
+bob = client("Bob")
 
 #a bit of data
 f = data()
