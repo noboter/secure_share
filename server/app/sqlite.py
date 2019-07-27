@@ -81,8 +81,7 @@ class Db:
         self.c.execute(sql, (data['name'], data['publickey'], str(int(epoch))))
         self.conn.commit()
         return True
-        #print(query)
-        #print("executed")
+
     
     def findPk(self, name):
         sql = "SELECT * FROM public_keys where username = ?"
@@ -97,3 +96,58 @@ class Db:
         #print(query)
         #print("executed")
     
+    def insert_data(self, data):
+        sql = "SELECT MAX(dataid) FROM data"
+        self.c.execute(sql)
+        row = self.c.fetchone()
+        maxid = 0
+        if(row==None):
+            maxid = 0 # there is no data
+        else:
+            maxid = int(row[0])+1
+
+        epoch=int(time.time())
+        sql = "INSERT OR REPLACE INTO data (dataid,data,epoch) values (?, ?, ?)"
+        self.c.execute(sql, (maxid, data, str(int(epoch))))
+        self.conn.commit()
+        return maxid
+
+    def insert_Release(self, data):
+
+        epoch=int(time.time())
+        sql = "INSERT OR REPLACE INTO keys (public_Key_sender,public_Key_receiver,enc_Key, dataid, epoch) values (?, ?, ?, ?, ?)"
+        self.c.execute(sql, (data['public_Key_sender'], data['public_Key_receiver'], data['enc_Key'], data['dataid'], str(int(epoch))))
+        self.conn.commit()
+        return True
+
+    def get_Data(self, publicKey):
+        sql = "SELECT * from keys where public_Key_receiver = ?"
+        self.c.execute(sql, (publicKey,))
+        rows = self.c.fetchall()
+        result=[]
+        
+        if(rows==None):
+            return "" # no data available
+        for row in rows:
+            encKey = row[2]
+            dataid = row[3]
+            result.append((encKey,dataid))
+
+        res = []
+        for d in result:
+            #get the data:
+            did = d[1]
+            key = d[0]
+            sql = "SELECT data from data where dataid = ?"
+            self.c.execute(sql, (did,))
+            row = self.c.fetchone()
+            if(row==None):
+                continue# there is no data
+            else:
+                onedok={}
+                onedok['key'] = key
+                onedok['data'] = row[0]
+                res.append(onedok)
+        
+        return res
+

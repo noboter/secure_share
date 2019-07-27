@@ -108,6 +108,51 @@ def postdict():
     else:
         return jsonify(result=False)
 
+@app.route('/uploadData', methods=['POST'])
+def uploadData():
+    #add keys or files or .. to the db through client
+    db = Db('database.db')
+
+    chunk_size = 4096
+    while True:
+        chunk = request.stream.read(chunk_size)
+        if len(chunk) == 0:
+            return
+        
+        res = db.insert_data(chunk) #should return an id 
+        return jsonify(result=res)
+    else:
+        return jsonify(result=False)
+
+@app.route('/postRelease', methods=['POST'])
+def postRelease():
+    #add keys or files or .. to the db through client
+    db = Db('database.db')
+    if(request.is_json):
+        ##get parameters
+        content = request.get_json()
+        data = json.loads(content)
+        res = db.insert_Release(data)
+
+        return jsonify(result=res)
+    else:
+        return jsonify(result=False)
+
+@app.route('/getData', methods=['POST'])
+def getData():
+    #add keys or files or .. to the db through client
+    db = Db('database.db')
+    if(request.is_json):
+        ##get parameters
+        content = request.get_json()
+        data = json.loads(content)
+        
+        res = db.get_Data(data['pk'])
+        
+        return jsonify(result=res)
+    else:
+        return jsonify(result=False)
+
 @app.route('/queryPK', methods=['POST'])
 def queryPK():
     #add keys or files or .. to the db through client
