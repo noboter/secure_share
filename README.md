@@ -10,12 +10,11 @@ the client generates 4096 bit RSA Keys
 quering for publickeys based on usernames is possible
 
 - clients will generate new AES keys for all uploaded data
-- AES keys are then encrypted by other users public keys 
-- encrypted keys and encrypted data is uploaded to the server
+- AES keys are then encrypted by other users RSA public keys
+- the AES encrypted data is signed with the senders private key
+- RSA encrypted AESkey and AES encrypted data is uploaded to the server
 
 TODO:
-- use TLS connections
-- use certificates to secure the publickeys
-- limit the time a file is shared
-- select which data to decrypt
-- enable authenticated deletion of data
+- TLS connections, so the clients know with which server they are talking
+- select which data to decrypt (not always all like now)
+- enable deletion of data
