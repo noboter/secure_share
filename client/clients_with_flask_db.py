@@ -10,8 +10,10 @@ import requests
 import random
 import string
 from Cryptodome.Cipher import AES, PKCS1_OAEP
+from Cryptodome.Hash import SHA256
 from Cryptodome import Random
 from Cryptodome.PublicKey import RSA
+from Cryptodome.Signature import pkcs1_15
 
 BLOCK_SIZE = 16  # Bytes
 PAD = lambda s: s + (BLOCK_SIZE - len(s) % BLOCK_SIZE) * chr(BLOCK_SIZE - len(s) % BLOCK_SIZE)
@@ -26,6 +28,7 @@ class client:
         self.name = name
         #check if key exists, otherwise create one
         if(self.readKeyFromHD()):
+            print("[*] client read RSA Key from HD for " + name);
             private_key = RSA.import_key(self.privatekey)
         else:
             print("[*] client generating RSA Key for " + name);
@@ -65,11 +68,33 @@ class client:
         except FileNotFoundError:
             print('[!] Error: private keyfile does not exist')
             return False
+        
+    def signData(self, data):
+        #create Hash of data 
+        hashed = SHA256.new(data)
+        #sign data with private key
+        private_key = RSA.import_key(self.privatekey)
+        signature = pkcs1_15.new(private_key).sign(hashed)
+        print("[*] client signed data");# + str(signature))
+        return signature
 
+    def checkSignture(self, data, signature, public_key_sender):
+        #create Hash of data 
+        hashed = SHA256.new(data)
+        #check against signature of sender
+        pubKey = RSA.import_key(public_key_sender)
+        try:
+            pkcs1_15.new(pubKey).verify(hashed, signature)
+            print("[+] signaure correct")
+            return True
+        except (ValueError, TypeError):
+            print ("[!] The signature is not valid.")
+            return False
     
     def uploadKeyToServer(self):#, phonebook):
         #stores the public key and other relevant data on server 
         #phonebook is the url of the server
+        print("[*] client upload public key to server for " + self.name);
         data = {}
         data['publickey'] = self.publickey.decode('utf-8')
         data['name'] = self.name
@@ -78,15 +103,17 @@ class client:
         #print("upload data " + j)
         try:
             res = requests.post('http://localhost:5000/postkey', json=j)
-            #print(res)
             if res.ok:
                 print("[+] upload of " + self.name + "s key:" + str(res.json()))
+            else:
+                print("[!] Error uploading of " + self.name + "s key:" + str(res.json()))
         except Exception as e:
             print("[!] Error: cannot connect to server to upload the Pubkey of user: " + self.name)
             
     def queryPkOnServer(self, username):#, phonebook):
         #stores the public key and other relevant data on server 
         #phonebook is the url of the server
+        print("[*] query for " + username + "s key on server" )
         data = {}
         data['name'] = username
         j = json.dumps(data)
@@ -97,6 +124,8 @@ class client:
                 ret = res.json()
                 #print(ret)
                 return ret[0][1]
+            else:
+                print("[-] " + username + " cannot be found on server" )
         except Exception as e:
             print("[!] Error: cannot connect to server to query pubkey from user: " + username)
             
@@ -120,12 +149,13 @@ class client:
             keysdata['public_Key_sender'] = str(keys['public_Key_sender'])
             keysdata['public_Key_receiver'] = str(keys['public_Key_receiver'])
             keysdata['enc_Key'] = keys['enc_Key']
+            keysdata['signature'] = keys['signature']
             j = json.dumps(keysdata)
-        
             res = requests.post('http://localhost:5000/postRelease', json=j)
             if res.ok:
-                print("[+] upload of Released Keys:" + str(res.json()))
-                #return ret[0][1]
+                print("[+] Upload of Released Keys:" + str(res.json()))
+            else:
+                print("[!] Error uploading Keys:" + str(res))
         except Exception as e:
             print("[!] Error: cannot connect to server to upload data from user: " + self.name)
         
@@ -139,7 +169,7 @@ class client:
         #print(res)
         if res.ok:
             ret = res.json()
-            print("[+] result of downloading ok ")# + str(ret))
+            print("[+] got data and keys from server")# + str(ret))
             return ret
         else:
             return False
@@ -189,6 +219,8 @@ bob.uploadKeyToServer()
 f = data()
 #and encrypts it
 AESencryptedData = f.enc(text)
+#and signs it
+sign = alice.signData(AESencryptedData)
 
 #now alice encrypts the key for bob by asking the server for Bobs public key
 bobsKey = alice.queryPkOnServer("Bob")
@@ -202,12 +234,14 @@ keys = {}
 keys['public_Key_sender'] = alice.publickey.decode('utf-8')
 keys['public_Key_receiver'] = bobsKey
 keys['enc_Key'] = encAESkey.hex()
+keys['signature'] = sign.hex()
 alice.uploadDataToServer(AESencryptedData.hex(), keys)
 
 
 #Now bob can access data on the server and may decrpyt it
 try:
-    res = bob.getDataFromServer()    
+    #get all data that is encrypted for bob
+    res = bob.getDataFromServer()
     #now bob has data and keys
     for pair in res['result']:
         encAESkey2 = bytes.fromhex(pair['key'])
@@ -215,8 +249,13 @@ try:
         decAESkey = bob.decKey(encAESkey2)
         #now decrypt the data
         data = bytes.fromhex(pair['data'])
-        print("Data decrypted by Bob")
-        print(decrypt(data, decAESkey).decode('utf-8'))
+        sign = bytes.fromhex(pair['signature'])
+        pubkey_sender = pair['public_key_sender']
+        #now check if the encrypted data was signed by alice:
+        if(bob.checkSignture(data, sign, pubkey_sender)):
+            #if yes, decrypt it
+            print("Data decrypted by Bob")
+            print(decrypt(data, decAESkey).decode('utf-8'))
        
 except NameError:
     print("[!] cannot decrpyt as the key does not exist")

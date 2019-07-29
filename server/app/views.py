@@ -85,7 +85,7 @@ def listkeys():
         for i in pks:
             body+=Markup("<tr>")
             for j in i:
-                body += Markup("<td>")+j+Markup("</td>")
+                body += Markup("<td>")+str(j)+Markup("</td>")
             body+=Markup("</tr>")
         body+=Markup("</tbody></table>")
         body += Markup("</br>")
@@ -94,7 +94,7 @@ def listkeys():
         return redirect('/')
 
 @app.route('/postkey', methods=['POST'])
-def postdict():
+def postkey():
     #add keys or files or .. to the db through client
     db = Db('database.db')
     if(request.is_json):
@@ -133,7 +133,6 @@ def postRelease():
         content = request.get_json()
         data = json.loads(content)
         res = db.insert_Release(data)
-
         return jsonify(result=res)
     else:
         return jsonify(result=False)

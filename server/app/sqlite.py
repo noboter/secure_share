@@ -16,13 +16,13 @@ class Db:
         
         #only one key per username
         self.c.execute('''CREATE TABLE IF NOT EXISTS public_keys
-             (username text, public_Key text, signed text, primary key(username))''')
+             (username text, public_Key text, epoch BIGINT, primary key(username))''')
         
         self.c.execute('''CREATE TABLE IF NOT EXISTS keys
              (public_Key_sender text, public_Key_receiver text, encKey text, dataid INTEGER, epoch INTEGER, primary key(public_Key_sender, public_Key_receiver, epoch))''')
         
         self.c.execute('''CREATE TABLE IF NOT EXISTS data
-             (dataid INTEGER, data blob, epoch INTEGER, primary key(dataid, epoch))''')
+             (dataid INTEGER, data blob, signature blob, epoch INTEGER, primary key(dataid, epoch))''')
         
         self.conn.commit()
     
@@ -77,8 +77,8 @@ class Db:
     
     def insert_pubkey(self, data):
         epoch=int(time.time())
-        sql = "INSERT OR REPLACE INTO public_keys (username,public_Key,signed) values (?, ?, ?)"
-        self.c.execute(sql, (data['name'], data['publickey'], str(int(epoch))))
+        sql = "INSERT OR REPLACE INTO public_keys (username,public_Key,epoch) values (?, ?, ?)"
+        self.c.execute(sql, (data['name'], data['publickey'], int(epoch)))
         self.conn.commit()
         return True
 
@@ -108,15 +108,19 @@ class Db:
 
         epoch=int(time.time())
         sql = "INSERT OR REPLACE INTO data (dataid,data,epoch) values (?, ?, ?)"
-        self.c.execute(sql, (maxid, data, str(int(epoch))))
+        self.c.execute(sql, (maxid, data, int(epoch)))
         self.conn.commit()
         return maxid
 
     def insert_Release(self, data):
 
         epoch=int(time.time())
-        sql = "INSERT OR REPLACE INTO keys (public_Key_sender,public_Key_receiver,enc_Key, dataid, epoch) values (?, ?, ?, ?, ?)"
-        self.c.execute(sql, (data['public_Key_sender'], data['public_Key_receiver'], data['enc_Key'], data['dataid'], str(int(epoch))))
+        sql = "INSERT OR REPLACE INTO keys (public_Key_sender, public_Key_receiver, encKey, dataid, epoch) values (?, ?, ?, ?, ?)"
+        self.c.execute(sql, (data['public_Key_sender'], data['public_Key_receiver'], data['enc_Key'], int(data['dataid']), int(epoch)))
+        self.conn.commit()
+    
+        sql = "UPDATE data set signature = ? where dataid = ?"
+        self.c.execute(sql, (data['signature'],int(data['dataid'])))
         self.conn.commit()
         return True
 
@@ -129,16 +133,18 @@ class Db:
         if(rows==None):
             return "" # no data available
         for row in rows:
+            pk_sender = row[0]
             encKey = row[2]
             dataid = row[3]
-            result.append((encKey,dataid))
+            result.append((encKey, dataid, pk_sender))
 
         res = []
         for d in result:
             #get the data:
             did = d[1]
             key = d[0]
-            sql = "SELECT data from data where dataid = ?"
+            pk_sender = d[2]
+            sql = "SELECT data, signature from data where dataid = ?"
             self.c.execute(sql, (did,))
             row = self.c.fetchone()
             if(row==None):
@@ -147,6 +153,8 @@ class Db:
                 onedok={}
                 onedok['key'] = key
                 onedok['data'] = row[0]
+                onedok['signature'] = row[1]
+                onedok['public_key_sender'] = pk_sender
                 res.append(onedok)
         
         return res
