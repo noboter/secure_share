@@ -77,7 +77,6 @@ def index():
 def listkeys():
     if 'username' in session:
         db = Db('database.db')
-        #anti scraping gibberisch, just return random suff
         body = Markup("<a href='/'>home</a></br>")
         body += Markup("</br>")
         pks = db.get_pubkeys();

@@ -28,7 +28,7 @@ class client:
         self.name = name
         #check if key exists, otherwise create one
         if(self.readKeyFromHD()):
-            print("[*] client read RSA Key from HD for " + name);
+            print("[*] client read RSA Key for " + name);
             private_key = RSA.import_key(self.privatekey)
         else:
             print("[*] client generating RSA Key for " + name);
@@ -63,10 +63,9 @@ class client:
             if(len(key)<2):
                 return False
             self.privatekey = key
-            #close the file?
             return True
         except FileNotFoundError:
-            print('[!] Error: private keyfile does not exist')
+            print('[!] Error: private keyfile does not exist locally')
             return False
         
     def signData(self, data):
@@ -75,7 +74,7 @@ class client:
         #sign data with private key
         private_key = RSA.import_key(self.privatekey)
         signature = pkcs1_15.new(private_key).sign(hashed)
-        print("[*] client signed data");# + str(signature))
+        print("[*] client signed data");
         return signature
 
     def checkSignture(self, data, signature, public_key_sender):
@@ -112,7 +111,6 @@ class client:
             
     def queryPkOnServer(self, username):#, phonebook):
         #stores the public key and other relevant data on server 
-        #phonebook is the url of the server
         print("[*] query for " + username + "s key on server" )
         data = {}
         data['name'] = username
@@ -144,6 +142,7 @@ class client:
         
             maxid = ret['result']
 
+            #some construct to get all required information to the server
             keysdata = {}
             keysdata['dataid'] = maxid
             keysdata['public_Key_sender'] = str(keys['public_Key_sender'])
@@ -160,22 +159,22 @@ class client:
             print("[!] Error: cannot connect to server to upload data from user: " + self.name)
         
     def getDataFromServer(self):
-        #try:
-        data = {}
-        data['pk'] = self.publickey.decode('utf-8')
-        j = json.dumps(data)
-        res = requests.post('http://localhost:5000/getData', json = j)
-        #res will now containt the data and the encrypted key
-        #print(res)
-        if res.ok:
-            ret = res.json()
-            print("[+] got data and keys from server")# + str(ret))
-            return ret
-        else:
-            return False
-        
-        #except Exception as e:
-        #    print("[!] Error: cannot connect to server to upload data from user: " + self.name)
+        try:
+            data = {}
+            data['pk'] = self.publickey.decode('utf-8')
+            j = json.dumps(data)
+            res = requests.post('http://localhost:5000/getData', json = j)
+            #res will now containt the data and the encrypted key
+            #print(res)
+            if res.ok:
+                ret = res.json()
+                print("[+] got data and keys from server")# + str(ret))
+                return ret
+            else:
+                return False
+            
+        except Exception as e:
+            print("[!] Error: cannot connect to server to download data")
 
 class data:
     
