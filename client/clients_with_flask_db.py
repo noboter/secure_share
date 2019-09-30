@@ -35,7 +35,7 @@ class client:
             #generate client rsa public/private key
             private_key = RSA.generate(4096)
             self.privatekey = private_key.export_key()
-            self.safeKey()
+            self.safeKeyToHD()
 
         #encrypted_key = key.export_key(passphrase=secret_code, pkcs=8, protection="scryptAndAES128-CBC")
         self.publickey = private_key.publickey().export_key()
